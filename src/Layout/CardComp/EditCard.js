@@ -1,48 +1,50 @@
 import React, { useState, useEffect } from "react";
 import { Link, useHistory, useParams } from "react-router-dom";
 import { updateCard, readDeck, readCard } from "../../utils/api/index";
+import CardForm from "./CardForm"
 
 function EditCard() {
-  const initialState = {
-    front: "",
-    back: "",
-  };
-  const [cardData, setCardData] = useState(initialState);
-  const [deck, setDeck] = useState({});
-  const [card, setCard] = useState({});
-  const history = useHistory();
+  const [deck, setDeck] = useState([]);
+  const [card, setCard] = useState([]);
   const { deckId, cardId } = useParams();
+  const [changed, setChanged] = useState(false);
+  const history = useHistory();
 
-  const handleChange = (event) => {
-    setCardData({
-      ...cardData,
-      [event.target.name]: event.target.value,
-    });
-  };
-
-  const handleSubmit = async (event) => {
+  const handleSubmit = (event) => {
     event.preventDefault();
-    await updateCard(cardData);
+    if (changed) {
+      const updatedCard = {
+        front: cardFront,
+        back: cardBack,
+        deckId: Number(deckId),
+        id: Number(cardId),
+      };
+      updateCard(updatedCard);
+      setChanged((boolean) => (boolean = false));
+    }
     history.push(`/decks/${deckId}`);
   };
 
   useEffect(() => {
     const abortController = new AbortController();
-    const loadDeck = async () => {
-      const deckAtId = await readDeck(deckId, abortController.signal);
-      const cardAtId = await readCard(cardId);
-      setDeck(() => deckAtId);
-      setCard(() => cardAtId);
-      setCardData({
-        id: cardId,
-        front: cardAtId.front,
-        back: cardAtId.back,
-        deckId: Number(deckId),
-      });
-    };
+    const loadDeck = async () => setDeck(await readDeck(deckId));
+    const loadCard = async () => setCard(await readCard(cardId));
     loadDeck();
+    loadCard();
     return () => abortController.abort();
   }, [deckId, cardId]);
+
+  const [cardFront, setCardFront] = useState(card.front);
+  const [cardBack, setCardBack] = useState(card.back);
+
+  const handleFrontChange = (event) => {
+    setCardFront(event.target.value);
+    setChanged((boolean) => (boolean = true));
+  };
+  const handleBackChange = (event) => {
+    setCardBack(event.target.value);
+    setChanged((boolean) => (boolean = true));
+  };
 
   return (
     <>
@@ -61,40 +63,11 @@ function EditCard() {
         </ol>
       </nav>
       <h1>Edit Card</h1>
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="front">
-            <h3>Front</h3>
-          </label>
-          <textarea
-            name="front"
-            className="form-control"
-            value={cardData.front}
-            onChange={handleChange}
-            required={true}
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="back">
-            <h3>Back</h3>
-          </label>
-          <textarea
-            name="back"
-            className="form-control"
-            value={cardData.back}
-            onChange={handleChange}
-            required={true}
-          />
-        </div>
-        <div>
-          <Link to={`/decks/${deckId}`}>
-            <button className="btn btn-secondary mr-2">Cancel</button>
-          </Link>
-          <button type="submit" className="btn btn-primary">
-            Submit
-          </button>
-        </div>
-      </form>
+      <CardForm
+        onSubmit={handleSubmit}
+        handleFrontChange={handleFrontChange}
+        handleBackChange={handleBackChange}
+      />
     </>
   );
 }

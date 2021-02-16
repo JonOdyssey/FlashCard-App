@@ -1,38 +1,42 @@
 import React, { useState, useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useHistory, useParams } from "react-router-dom";
 import { createCard, readDeck } from "../../utils/api/index";
+import CardForm from "./CardForm";
 
 function AddCard() {
-  const initialState = {
-    front: "",
-    back: "",
-  };
-  const [cardData, setCardData] = useState(initialState);
-  const [deck, setDeck] = useState({});
-  const { deckId } = useParams();
+  const [cardFront, setCardFront] = useState("");
+  const [cardBack, setCardBack] = useState("");
+  const [deck, setDeck] = useState("");
+  const { deckId, cardId } = useParams();
 
-  const handleChange = (event) => {
-    setCardData({
-      ...cardData,
-      [event.target.name]: event.target.value,
-    });
-  };
+  const history = useHistory();
 
-  const handleSubmit = async (event) => {
+  const handleFrontChange = (event) => setCardFront(event.target.value);
+  const handleBackChange = (event) => setCardBack(event.target.value);
+
+  const handleSubmit = (event) => {
     event.preventDefault();
-    await createCard(deckId, cardData);
-    setCardData(initialState);
+    const newCard = {
+      front: cardFront,
+      back: cardBack,
+      deckId: Number(deckId),
+      id: Number(cardId),
+    };
+    createCard(deckId, newCard);
+
+    const loadDeck = async () => setDeck(await readDeck(deckId));
+    loadDeck();
+    history.push(`/decks/${deckId}`);
   };
 
   useEffect(() => {
     const abortController = new AbortController();
     const loadDeck = async () => {
-      const deckAtId = await readDeck(deckId, abortController.signal);
-      setDeck(() => deckAtId);
+      setDeck(await readDeck(deckId, abortController.signal));
     };
     loadDeck();
     return () => abortController.abort();
-  }, [deckId]);
+  }, [deckId, history]);
 
   return (
     <>
@@ -52,40 +56,11 @@ function AddCard() {
         </ol>
       </nav>
       <h1>{deck.name}: Add Card</h1>
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="front">
-            <h3>Front</h3>
-          </label>
-          <textarea
-            name="front"
-            className="form-control"
-            value={cardData.front}
-            onChange={handleChange}
-            required={true}
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="back">
-            <h3>Back</h3>
-          </label>
-          <textarea
-            name="back"
-            className="form-control"
-            value={cardData.back}
-            onChange={handleChange}
-            required={true}
-          />
-        </div>
-        <div>
-          <Link to={`/decks/${deckId}`}>
-            <button className="btn btn-secondary mr-2">Done</button>
-          </Link>
-          <button type="submit" className="btn btn-primary">
-            Save
-          </button>
-        </div>
-      </form>
+      <CardForm
+        onSubmit={handleSubmit}
+        handleFrontChange={handleFrontChange}
+        handleBackChange={handleBackChange}
+      />
     </>
   );
 }
